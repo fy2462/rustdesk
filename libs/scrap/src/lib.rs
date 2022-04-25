@@ -14,7 +14,7 @@ pub mod quartz;
 #[cfg(x11)]
 pub mod x11;
 
-#[cfg(all(x11, feature="wayland"))]
+#[cfg(all(x11, feature = "wayland"))]
 pub mod wayland;
 
 #[cfg(dxgi)]

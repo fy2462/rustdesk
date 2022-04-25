@@ -43,9 +43,9 @@ fn generate_bindings(
 ) {
     let mut b = bindgen::builder()
         .header(ffi_header.to_str().unwrap())
-        .allowlist_type("^[vV].*")
-        .allowlist_var("^[vV].*")
-        .allowlist_function("^[vV].*")
+        // .allowlist_type("^[vV].*")
+        // .allowlist_var("^[vV].*")
+        // .allowlist_function("^[vV].*")
         .rustified_enum("^v.*")
         .trust_clang_mangling(false)
         .layout_tests(false) // breaks 32/64-bit compat
@@ -54,26 +54,25 @@ fn generate_bindings(
     for dir in include_paths {
         b = b.clang_arg(format!("-I{}", dir.display()));
     }
-
     b.generate().unwrap().write_to_file(ffi_rs).unwrap();
     fs::copy(ffi_rs, exact_file).ok(); // ignore failure
 }
 
-fn gen_vpx() {
-    let includes = find_package("libvpx");
+fn gen_lib_bingding(package_name: &str, header_file_name: &str, rs_output_path: &str) {
+    let includes = find_package(package_name);
     let src_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
     let src_dir = Path::new(&src_dir);
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
 
-    let ffi_header = src_dir.join("vpx_ffi.h");
+    let ffi_header = src_dir.join(header_file_name);
     println!("rerun-if-changed={}", ffi_header.display());
     for dir in &includes {
         println!("rerun-if-changed={}", dir.display());
     }
 
-    let ffi_rs = out_dir.join("vpx_ffi.rs");
-    let exact_file = src_dir.join("generated").join("vpx_ffi.rs");
+    let ffi_rs = out_dir.join(rs_output_path);
+    let exact_file = src_dir.join("generated").join(rs_output_path);
     generate_bindings(&ffi_header, &includes, &ffi_rs, &exact_file);
 }
 
@@ -90,7 +89,8 @@ fn main() {
     env::set_var("CARGO_CFG_TARGET_FEATURE", "crt-static");
 
     find_package("libyuv");
-    gen_vpx();
+    gen_lib_bingding("libvpx", "vpx_ffi.h", "vpx_ffi.rs");
+    gen_lib_bingding("aom", "aom_ffi.h", "aom_ffi.rs");
 
     // there is problem with cfg(target_os) in build.rs, so use our workaround
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
