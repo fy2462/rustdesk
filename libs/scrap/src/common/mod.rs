@@ -29,8 +29,8 @@ mod convert;
 pub use self::convert::*;
 pub const STRIDE_ALIGN: usize = 64; // commonly used in libvpx vpx_img_alloc caller
 
-mod aom;
-mod vpx;
+pub mod aom;
+pub mod vpx;
 
 #[inline]
 pub fn would_block_if_equal(old: &mut Vec<u128>, b: &[u8]) -> std::io::Result<()> {

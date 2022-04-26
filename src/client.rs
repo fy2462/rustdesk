@@ -20,7 +20,7 @@ use hbb_common::{
     AddrMangle, ResultType, Stream,
 };
 use magnum_opus::{Channels::*, Decoder as AudioDecoder};
-use scrap::{Decoder, Image, VideoCodecId};
+use scrap::{aom::AomImage, Decoder, Image, ImageApi, VideoCodecId};
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
