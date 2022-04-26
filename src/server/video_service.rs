@@ -170,7 +170,7 @@ fn run(sp: GenericService) -> ResultType<()> {
         }
     }
 
-    let fps = 30;
+    let fps = 25;
     let wait = 1000 / fps;
     let spf = time::Duration::from_secs_f32(1. / (fps as f32));
     let (ndisplay, current, display) = get_current_display()?;
@@ -200,7 +200,7 @@ fn run(sp: GenericService) -> ResultType<()> {
         speed,
     };
     let mut vpx;
-    match Encoder::new(&cfg, (num_cpus::get() / 2) as _) {
+    match Encoder::new(&cfg, 8) {
         Ok(x) => vpx = x,
         Err(err) => bail!("Failed to create encoder: {}", err),
     }
@@ -302,6 +302,8 @@ fn run(sp: GenericService) -> ResultType<()> {
         log::trace!("{:?} {:?}", time::Instant::now(), elapsed);
         if elapsed < spf {
             std::thread::sleep(spf - elapsed);
+        } else {
+            log::info!("elapsed: {}, spf: {}", elapsed.as_millis(), spf.as_millis());
         }
     }
 
@@ -494,11 +496,11 @@ pub fn update_test_latency(id: i32, latency: i64) {
 fn convert_quality(q: i32) -> i32 {
     let q = {
         if q == ImageQuality::Balanced.value() {
-            (100 * 2 / 3, 12)
+            (200 * 2 / 3, 12)
         } else if q == ImageQuality::Low.value() {
-            (100 / 2, 18)
+            (200 / 2, 18)
         } else if q == ImageQuality::Best.value() {
-            (100, 12)
+            (200, 12)
         } else {
             let bitrate = q >> 8 & 0xFF;
             let quantizer = q & 0xFF;
@@ -544,5 +546,5 @@ fn get_quality(w: usize, h: usize, q: i32) -> (u32, u32, u32, i32) {
     let bitrate = q >> 8 & 0xFF;
     let quantizer = q & 0xFF;
     let b = ((w * h) / 1000) as u32;
-    (bitrate as u32 * b / 100, quantizer as _, 56, 7)
+    (bitrate as u32 * b / 100, quantizer as _, 48, 7)
 }

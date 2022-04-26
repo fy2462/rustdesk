@@ -120,8 +120,8 @@ impl EncoderApi for AomEncoder {
         cfg.g_w = config.width;
         cfg.g_h = config.height;
         cfg.g_threads = num_threads;
-        cfg.g_timebase.num = 1;
-        cfg.g_timebase.den = 90000;
+        cfg.g_timebase.num = config.timebase[0];
+        cfg.g_timebase.den = config.timebase[1];
         cfg.rc_target_bitrate = config.bitrate; // kilobits/sec.
         cfg.g_input_bit_depth = 8;
         cfg.kf_mode = aom_kf_mode_AOM_KF_DISABLED;
