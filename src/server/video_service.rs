@@ -170,7 +170,7 @@ fn run(sp: GenericService) -> ResultType<()> {
         }
     }
 
-    let fps = 25;
+    let fps = 30;
     let wait = 1000 / fps;
     let spf = time::Duration::from_secs_f32(1. / (fps as f32));
     let (ndisplay, current, display) = get_current_display()?;
