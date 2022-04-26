@@ -322,7 +322,11 @@ impl Client {
         Ok((conn, direct))
     }
 
-    async fn secure_connection(peer_id: &str, signed_id_pk: Vec<u8>, conn: &mut Stream) -> ResultType<()> {
+    async fn secure_connection(
+        peer_id: &str,
+        signed_id_pk: Vec<u8>,
+        conn: &mut Stream,
+    ) -> ResultType<()> {
         let rs_pk = get_rs_pk("OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=");
         let mut sign_pk = None;
         if !signed_id_pk.is_empty() && rs_pk.is_some() {
@@ -501,14 +505,14 @@ impl AudioHandler {
         use hbb_common::config::APP_NAME;
 
         self.simple = Some(Simple::new(
-            None,                   // Use the default server
-            APP_NAME,               // Our application’s name
-            Direction::Playback,    // We want a playback stream
-            None,                   // Use the default device
-            "playback",             // Description of our stream
-            &spec,                  // Our sample format
-            None,                   // Use default channel map
-            None,                   // Use default buffering attributes
+            None,                // Use the default server
+            APP_NAME,            // Our application’s name
+            Direction::Playback, // We want a playback stream
+            None,                // Use the default device
+            "playback",          // Description of our stream
+            &spec,               // Our sample format
+            None,                // Use default channel map
+            None,                // Use default buffering attributes
         )?);
         self.sample_rate = (format0.sample_rate, format0.sample_rate);
         Ok(())
@@ -660,13 +664,13 @@ pub struct VideoHandler {
 impl VideoHandler {
     pub fn new() -> Self {
         VideoHandler {
-            decoder: Decoder::new(VideoCodecId::VP9, (num_cpus::get() / 2) as _).unwrap(),
+            decoder: Decoder::new(VideoCodecId::AV1, (num_cpus::get() / 2) as _).unwrap(),
             rgb: Default::default(),
         }
     }
 
     pub fn handle_vp9s(&mut self, vp9s: &VP9s) -> ResultType<bool> {
-        let mut last_frame = Image::new();
+        let mut last_frame = Image::new(AomImage::new());
         for vp9 in vp9s.frames.iter() {
             for frame in self.decoder.decode(&vp9.data)? {
                 drop(last_frame);

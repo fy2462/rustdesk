@@ -194,7 +194,7 @@ fn run(sp: GenericService) -> ResultType<()> {
         height: height as _,
         timebase: [1, 1000], // Output timestamp precision
         bitrate,
-        codec: VideoCodecId::VP9,
+        codec: VideoCodecId::AV1,
         rc_min_quantizer,
         rc_max_quantizer,
         speed,
@@ -271,7 +271,8 @@ fn run(sp: GenericService) -> ResultType<()> {
                     try_gdi = 0;
                 }
             }
-            Err(ref e) if e.kind() == WouldBlock => {
+            Err(ref e) if e.kind() == WouldBlock =>
+            {
                 #[cfg(windows)]
                 if try_gdi > 0 && !c.is_gdi() {
                     if try_gdi > 3 {

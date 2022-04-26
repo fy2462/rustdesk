@@ -58,12 +58,13 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 impl Encoder {
     pub fn new(config: &Config, num_threads: u32) -> Result<Self> {
-        let encoder = match config.codec {
-            VideoCodecId::VP8 | VideoCodecId::VP9 => {
-                Box::new(VpxEncoder::new(config, num_threads).ok().unwrap())
-            }
-            VideoCodecId::AV1 => Box::new(AomEncoder::new(config, num_threads).ok().unwrap()),
-        };
+        // let encoder = match config.codec {
+        //     VideoCodecId::VP8 | VideoCodecId::VP9 => {
+        //         Box::new(VpxEncoder::new(config, num_threads).ok().unwrap())
+        //     }
+        //     VideoCodecId::AV1 => Box::new(AomEncoder::new(config, num_threads).ok().unwrap()),
+        // };
+        let encoder = Box::new(AomEncoder::new(config, num_threads).ok().unwrap());
         Ok(Self {
             inner: encoder,
             width: config.width as _,
@@ -119,10 +120,11 @@ pub struct EncodeFrames<'a> {
 impl<'a> Iterator for EncodeFrames<'a> {
     type Item = EncodeFrame<'a>;
     fn next(&mut self) -> Option<Self::Item> {
-        let item = match self.frame_type {
-            VideoCodecId::VP8 | VideoCodecId::VP9 => self.vpx_frame.unwrap().next(),
-            VideoCodecId::AV1 => self.aom_frame.unwrap().next(),
-        };
+        // let item = match self.frame_type {
+        //     VideoCodecId::VP8 | VideoCodecId::VP9 => self.vpx_frame.unwrap().next(),
+        //     VideoCodecId::AV1 => self.aom_frame.unwrap().next(),
+        // };
+        let item = self.aom_frame.as_mut().unwrap().next();
         return item;
     }
 }
@@ -148,12 +150,13 @@ impl Decoder {
     /// The function may fail if the underlying libvpx does not provide
     /// the VP9 decoder.
     pub fn new(codec: VideoCodecId, num_threads: u32) -> Result<Self> {
-        let decoder = match codec {
-            VideoCodecId::VP8 | VideoCodecId::VP9 => {
-                VpxDecoder::new(codec, num_threads).ok().unwrap()
-            }
-            VideoCodecId::AV1 => VpxDecoder::new(codec, num_threads).ok().unwrap(),
-        };
+        // let decoder = match codec {
+        //     VideoCodecId::VP8 | VideoCodecId::VP9 => {
+        //         VpxDecoder::new(codec, num_threads).ok().unwrap()
+        //     }
+        //     VideoCodecId::AV1 => VpxDecoder::new(codec, num_threads).ok().unwrap(),
+        // };
+        let decoder = AomDecoder::new(codec, num_threads).ok().unwrap();
         Ok(Self {
             inner: Box::new(decoder),
         })
@@ -175,16 +178,18 @@ impl Decoder {
 
 pub struct DecodeFrames<'a> {
     pub vpx_frame: Option<VpxDecodeFrames<'a>>,
+    pub aom_frame: Option<AomDecodeFrames<'a>>,
     pub frame_type: VideoCodecId,
 }
 
 impl<'a> Iterator for DecodeFrames<'a> {
-    type Item = Image<VpxImage>;
+    type Item = Image<AomImage>;
     fn next(&mut self) -> Option<Self::Item> {
-        let item = match self.frame_type {
-            VideoCodecId::VP8 | VideoCodecId::VP9 => self.vpx_frame.unwrap().next(),
-            VideoCodecId::AV1 => self.vpx_frame.unwrap().next(),
-        };
+        // let item = match self.frame_type {
+        //     VideoCodecId::VP8 | VideoCodecId::VP9 => self.vpx_frame.unwrap().next(),
+        //     VideoCodecId::AV1 => self.aom_frame.unwrap().next(),
+        // };
+        let item = self.aom_frame.as_mut().unwrap().next();
         return item;
     }
 }

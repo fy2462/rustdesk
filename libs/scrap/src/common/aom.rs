@@ -264,3 +264,208 @@ impl Drop for AomEncoder {
         }
     }
 }
+
+pub struct AomDecodeFrames<'a> {
+    ctx: &'a mut aom_codec_ctx_t,
+    iter: aom_codec_iter_t,
+}
+
+impl<'a> Iterator for AomDecodeFrames<'a> {
+    type Item = Image<AomImage>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let img = unsafe { aom_codec_get_frame(self.ctx, &mut self.iter) };
+        if img.is_null() {
+            return None;
+        } else {
+            return Some(Image::new(AomImage(img)));
+        }
+    }
+}
+
+pub struct AomDecoder {
+    ctx: aom_codec_ctx_t,
+    decoder_type: VideoCodecId,
+}
+
+impl DecoderApi for AomDecoder {
+    fn new(codec: VideoCodecId, num_threads: u32) -> Result<Self> {
+        let dx = call_aom_ptr!(aom_codec_av1_dx());
+        let mut ctx = Default::default();
+        let cfg = aom_codec_dec_cfg_t {
+            threads: if num_threads == 0 {
+                num_cpus::get() as _
+            } else {
+                num_threads
+            },
+            w: 0,
+            h: 0,
+            allow_lowbitdepth: 1,
+        };
+        call_aom!(aom_codec_dec_init_ver(
+            &mut ctx,
+            dx,
+            &cfg,
+            0,
+            AOM_DECODER_ABI_VERSION as _,
+        ));
+        Ok(Self {
+            ctx,
+            decoder_type: codec,
+        })
+    }
+
+    fn decode2rgb(&mut self, data: &[u8], rgba: bool) -> Result<Vec<u8>> {
+        let mut img = Image::new(AomImage::new());
+        for frame in self.decode(data)? {
+            drop(img);
+            img = frame;
+        }
+        for frame in self.flush()? {
+            drop(img);
+            img = frame;
+        }
+        if img.is_null() {
+            Ok(Vec::new())
+        } else {
+            let mut out = Default::default();
+            img.rgb(1, rgba, &mut out);
+            Ok(out)
+        }
+    }
+
+    fn decode(&mut self, data: &[u8]) -> Result<DecodeFrames> {
+        call_aom!(aom_codec_decode(
+            &mut self.ctx,
+            data.as_ptr(),
+            data.len() as _,
+            ptr::null_mut(),
+        ));
+
+        Ok(DecodeFrames {
+            aom_frame: Some(AomDecodeFrames {
+                ctx: &mut self.ctx,
+                iter: ptr::null(),
+            }),
+            vpx_frame: None,
+            frame_type: self.decoder_type,
+        })
+    }
+
+    fn flush(&mut self) -> Result<DecodeFrames> {
+        call_aom!(aom_codec_decode(
+            &mut self.ctx,
+            ptr::null(),
+            0,
+            ptr::null_mut(),
+        ));
+        Ok(DecodeFrames {
+            aom_frame: Some(AomDecodeFrames {
+                ctx: &mut self.ctx,
+                iter: ptr::null(),
+            }),
+            vpx_frame: None,
+            frame_type: self.decoder_type,
+        })
+    }
+}
+
+impl Drop for AomDecoder {
+    fn drop(&mut self) {
+        unsafe {
+            let result = aom_codec_destroy(&mut self.ctx);
+            if result != aom_codec_err_t_AOM_CODEC_OK {
+                panic!("failed to destroy aom codec");
+            }
+        }
+    }
+}
+
+pub struct AomImage(*mut aom_image_t);
+
+impl AomImage {
+    #[inline]
+    fn inner(&self) -> &aom_image_t {
+        unsafe { &*self.0 }
+    }
+}
+
+impl ImageApi for AomImage {
+    #[inline]
+    fn new() -> Self {
+        Self(std::ptr::null_mut())
+    }
+
+    #[inline]
+    fn is_null(&self) -> bool {
+        self.0.is_null()
+    }
+
+    #[inline]
+    fn width(&self) -> usize {
+        self.inner().d_w as _
+    }
+
+    #[inline]
+    fn height(&self) -> usize {
+        self.inner().d_h as _
+    }
+
+    #[inline]
+    fn stride(&self, iplane: usize) -> i32 {
+        self.inner().stride[iplane]
+    }
+
+    fn rgb(&self, stride_align: usize, rgba: bool, dst: &mut Vec<u8>) {
+        let h = self.height();
+        let mut w = self.width();
+        let bps = if rgba { 4 } else { 3 };
+        w = (w + stride_align - 1) & !(stride_align - 1);
+        dst.resize(h * w * bps, 0);
+        let img = self.inner();
+        unsafe {
+            if rgba {
+                super::I420ToARGB(
+                    img.planes[0],
+                    img.stride[0],
+                    img.planes[1],
+                    img.stride[1],
+                    img.planes[2],
+                    img.stride[2],
+                    dst.as_mut_ptr(),
+                    (w * bps) as _,
+                    self.width() as _,
+                    self.height() as _,
+                );
+            } else {
+                super::I420ToRAW(
+                    img.planes[0],
+                    img.stride[0],
+                    img.planes[1],
+                    img.stride[1],
+                    img.planes[2],
+                    img.stride[2],
+                    dst.as_mut_ptr(),
+                    (w * bps) as _,
+                    self.width() as _,
+                    self.height() as _,
+                );
+            }
+        }
+    }
+
+    #[inline]
+    fn data(&self) -> (&[u8], &[u8], &[u8]) {
+        unsafe {
+            let img = self.inner();
+            let h = (img.d_h as usize + 1) & !1;
+            let n = img.stride[0] as usize * h;
+            let y = slice::from_raw_parts(img.planes[0], n);
+            let n = img.stride[1] as usize * (h >> 1);
+            let u = slice::from_raw_parts(img.planes[1], n);
+            let v = slice::from_raw_parts(img.planes[2], n);
+            (y, u, v)
+        }
+    }
+}
+
+unsafe impl Send for aom_codec_ctx_t {}

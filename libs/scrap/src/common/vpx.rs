@@ -356,22 +356,22 @@ impl DecoderApi for VpxDecoder {
     }
 
     fn decode2rgb(&mut self, data: &[u8], rgba: bool) -> Result<Vec<u8>> {
-        let mut img = Image::new(VpxImage::new());
-        for frame in self.decode(data)? {
-            drop(img);
-            img = frame;
-        }
-        for frame in self.flush()? {
-            drop(img);
-            img = frame;
-        }
-        if img.is_null() {
-            Ok(Vec::new())
-        } else {
-            let mut out = Default::default();
-            img.rgb(1, rgba, &mut out);
-            Ok(out)
-        }
+        let img = Image::new(VpxImage::new());
+        // for frame in self.decode(data)? {
+        //     drop(img);
+        //     img = frame;
+        // }
+        // for frame in self.flush()? {
+        //     drop(img);
+        //     img = frame;
+        // }
+        // if img.is_null() {
+        //     Ok(Vec::new())
+        // } else {
+        let mut out = Default::default();
+        img.rgb(1, rgba, &mut out);
+        Ok(out)
+        // }
     }
 
     /// Feed some compressed data to the encoder
@@ -393,6 +393,7 @@ impl DecoderApi for VpxDecoder {
                 ctx: &mut self.ctx,
                 iter: ptr::null(),
             }),
+            aom_frame: None,
             frame_type: self.decoder_type,
         })
     }
@@ -410,6 +411,7 @@ impl DecoderApi for VpxDecoder {
                 ctx: &mut self.ctx,
                 iter: ptr::null(),
             }),
+            aom_frame: None,
             frame_type: self.decoder_type,
         })
     }
